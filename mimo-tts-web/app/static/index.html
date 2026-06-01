@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiMo V2.5 TTS Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: light; }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.28), transparent 30%),
+        radial-gradient(circle at 80% 10%, rgba(168, 85, 247, 0.22), transparent 28%),
+        radial-gradient(circle at 50% 90%, rgba(14, 165, 233, 0.18), transparent 34%),
+        linear-gradient(135deg, #f8fafc 0%, #eef2ff 45%, #f8fafc 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(26px);
+      -webkit-backdrop-filter: blur(26px);
+      border: 1px solid rgba(255, 255, 255, 0.68);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    }
+
+    .soft-inner {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 12px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.45);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    input[type="range"] { accent-color: #111827; }
+  </style>
+</head>
+<body class="px-4 py-6 sm:px-8">
+  <main class="mx-auto max-w-5xl">
+    <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <div class="mb-3 inline-flex items-center rounded-full bg-white/60 px-4 py-2 text-sm text-slate-600 shadow-sm">
+          Xiaomi MiMo V2.5 TTS · Token Plan · FastAPI Proxy
+        </div>
+        <h1 class="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+          MiMo 语音生成器
+        </h1>
+        <p class="mt-3 max-w-2xl text-slate-600">
+          输入文字，直接在网页里填写 MiMo Token，由 FastAPI 后端代理转发请求，不用再手动修改 .env。
+        </p>
+      </div>
+    </header>
+
+    <section class="glass rounded-[2rem] p-4 sm:p-6">
+      <div class="grid gap-5 lg:grid-cols-[1.4fr_0.9fr]">
+        <div class="rounded-[1.5rem] bg-white/55 p-4 soft-inner">
+          <div class="mb-3 flex items-center justify-between">
+            <label for="text" class="text-sm font-medium text-slate-700">合成文本</label>
+            <span id="counter" class="text-sm text-slate-500">0 / 4096</span>
+          </div>
+
+          <textarea
+            id="text"
+            maxlength="4096"
+            class="min-h-[320px] w-full resize-none rounded-[1.25rem] border border-white/70 bg-white/70 p-4 text-base leading-7 text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
+            placeholder="请输入要转换成语音的文字，例如：你好，我是 MiMo V2.5 TTS。"
+          ></textarea>
+
+          <div class="mt-4">
+            <label for="stylePrompt" class="mb-2 block text-sm font-medium text-slate-700">风格提示，可选</label>
+            <input
+              id="stylePrompt"
+              type="text"
+              maxlength="300"
+              class="w-full rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-slate-900 outline-none transition focus:border-slate-300 focus:bg-white"
+              placeholder="例如：温柔、开心、新闻播报感、河南话、慢一点"
+            />
+          </div>
+        </div>
+
+        <aside class="rounded-[1.5rem] bg-white/55 p-4 soft-inner">
+          <h2 class="mb-4 text-lg font-semibold text-slate-950">参数控制</h2>
+
+          <div class="space-y-5">
+            <div class="rounded-2xl border border-white/70 bg-white/60 p-3">
+              <div class="mb-2 flex items-center justify-between gap-3">
+                <label for="apiKey" class="block text-sm font-medium text-slate-700">MiMo API Token</label>
+                <button
+                  id="toggleApiKeyBtn"
+                  type="button"
+                  class="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
+                >显示</button>
+              </div>
+              <input
+                id="apiKey"
+                type="password"
+                autocomplete="off"
+                class="w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-slate-900 outline-none focus:border-slate-300"
+                placeholder="粘贴你的 MiMo Token，例如 sk-..."
+              />
+              <label class="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                <input id="rememberApiKey" type="checkbox" class="rounded border-slate-300" />
+                记住到本机浏览器，下次自动填入
+              </label>
+              <p class="mt-2 text-xs leading-5 text-slate-500">
+                Token 只会发送给你当前运行的后端代理；value 已改为接口支持的原始音色名。
+              </p>
+            </div>
+
+            <div>
+              <label for="voice" class="mb-2 block text-sm font-medium text-slate-700">发音人 Voice / Speaker</label>
+              <select
+                id="voice"
+                class="w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-slate-900 outline-none focus:border-slate-300"
+              >
+                <option value="mimo_default">MiMo 默认音色</option>
+                <option value="冰糖">冰糖 · 中文女声</option>
+                <option value="茉莉" selected>茉莉 · 中文女声</option>
+                <option value="苏打">苏打 · 中文男声</option>
+                <option value="白桦">白桦 · 中文男声</option>
+                <option value="Mia">Mia · English Female</option>
+                <option value="Chloe">Chloe · English Female</option>
+                <option value="Milo">Milo · English Male</option>
+                <option value="Dean">Dean · English Male</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="mb-2 flex items-center justify-between">
+                <label for="speed" class="text-sm font-medium text-slate-700">语速 Speed</label>
+                <span id="speedValue" class="text-sm text-slate-500">1.0x</span>
+              </div>
+              <input id="speed" type="range" min="0.5" max="2.0" step="0.1" value="1.0" class="w-full" />
+            </div>
+
+            <div>
+              <div class="mb-2 flex items-center justify-between">
+                <label for="volume" class="text-sm font-medium text-slate-700">音量 Volume</label>
+                <span id="volumeValue" class="text-sm text-slate-500">80</span>
+              </div>
+              <input id="volume" type="range" min="0" max="100" step="1" value="80" class="w-full" />
+            </div>
+
+            <div>
+              <label for="format" class="mb-2 block text-sm font-medium text-slate-700">输出格式</label>
+              <select
+                id="format"
+                class="w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-slate-900 outline-none focus:border-slate-300"
+              >
+                <option value="mp3" selected>MP3</option>
+                <option value="wav">WAV</option>
+              </select>
+            </div>
+
+            <button
+              id="generateBtn"
+              class="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 font-medium text-white shadow-xl shadow-slate-900/20 transition hover:-translate-y-0.5 hover:bg-slate-800 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span id="btnText">生成语音</span>
+              <span id="spinner" class="spinner hidden"></span>
+            </button>
+
+            <div id="errorBox" class="hidden rounded-2xl border border-red-200 bg-red-50/80 p-4 text-sm text-red-700"></div>
+          </div>
+        </aside>
+      </div>
+
+      <section id="playerCard" class="mt-5 hidden rounded-[1.5rem] bg-white/60 p-4 soft-inner">
+        <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-950">生成结果</h2>
+            <p class="text-sm text-slate-500">可以在线播放，也可以下载到本地。</p>
+          </div>
+          <a
+            id="downloadLink"
+            class="rounded-2xl bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-50"
+            download="mimo-tts.mp3"
+            href="#"
+          >下载音频</a>
+        </div>
+        <audio id="audioPlayer" class="w-full" controls></audio>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const textEl = document.getElementById("text");
+    const counterEl = document.getElementById("counter");
+    const speedEl = document.getElementById("speed");
+    const speedValueEl = document.getElementById("speedValue");
+    const volumeEl = document.getElementById("volume");
+    const volumeValueEl = document.getElementById("volumeValue");
+    const voiceEl = document.getElementById("voice");
+    const formatEl = document.getElementById("format");
+    const stylePromptEl = document.getElementById("stylePrompt");
+    const apiKeyEl = document.getElementById("apiKey");
+    const rememberApiKeyEl = document.getElementById("rememberApiKey");
+    const toggleApiKeyBtn = document.getElementById("toggleApiKeyBtn");
+    const generateBtn = document.getElementById("generateBtn");
+    const btnText = document.getElementById("btnText");
+    const spinner = document.getElementById("spinner");
+    const errorBox = document.getElementById("errorBox");
+    const playerCard = document.getElementById("playerCard");
+    const audioPlayer = document.getElementById("audioPlayer");
+    const downloadLink = document.getElementById("downloadLink");
+
+    let currentAudioUrl = null;
+
+    const SAVED_API_KEY_KEY = "mimo_tts_api_key";
+    const savedApiKey = localStorage.getItem(SAVED_API_KEY_KEY);
+    if (savedApiKey) {
+      apiKeyEl.value = savedApiKey;
+      rememberApiKeyEl.checked = true;
+    }
+
+    toggleApiKeyBtn.addEventListener("click", () => {
+      const isPassword = apiKeyEl.type === "password";
+      apiKeyEl.type = isPassword ? "text" : "password";
+      toggleApiKeyBtn.textContent = isPassword ? "隐藏" : "显示";
+    });
+
+    rememberApiKeyEl.addEventListener("change", () => {
+      const apiKey = apiKeyEl.value.trim();
+      if (rememberApiKeyEl.checked && apiKey) {
+        localStorage.setItem(SAVED_API_KEY_KEY, apiKey);
+      } else {
+        localStorage.removeItem(SAVED_API_KEY_KEY);
+      }
+    });
+
+    apiKeyEl.addEventListener("input", () => {
+      if (rememberApiKeyEl.checked) {
+        const apiKey = apiKeyEl.value.trim();
+        if (apiKey) {
+          localStorage.setItem(SAVED_API_KEY_KEY, apiKey);
+        } else {
+          localStorage.removeItem(SAVED_API_KEY_KEY);
+        }
+      }
+    });
+
+    function updateCounter() {
+      counterEl.textContent = `${textEl.value.length} / 4096`;
+    }
+
+    function setLoading(isLoading) {
+      generateBtn.disabled = isLoading;
+      spinner.classList.toggle("hidden", !isLoading);
+      btnText.textContent = isLoading ? "生成中..." : "生成语音";
+    }
+
+    function showError(message) {
+      errorBox.textContent = message;
+      errorBox.classList.remove("hidden");
+    }
+
+    function hideError() {
+      errorBox.textContent = "";
+      errorBox.classList.add("hidden");
+    }
+
+    textEl.addEventListener("input", updateCounter);
+
+    speedEl.addEventListener("input", () => {
+      speedValueEl.textContent = `${Number(speedEl.value).toFixed(1)}x`;
+    });
+
+    volumeEl.addEventListener("input", () => {
+      volumeValueEl.textContent = volumeEl.value;
+    });
+
+    generateBtn.addEventListener("click", async () => {
+      hideError();
+
+      const text = textEl.value.trim();
+      if (!text) {
+        showError("请输入要合成的文本。");
+        return;
+      }
+
+      const apiKey = apiKeyEl.value.trim();
+
+      const payload = {
+        api_key: apiKey || null,
+        text,
+        voice: voiceEl.value,
+        speed: Number(speedEl.value),
+        volume: Number(volumeEl.value),
+        response_format: formatEl.value,
+        style_prompt: stylePromptEl.value.trim() || null,
+      };
+
+      setLoading(true);
+
+      try {
+        const response = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          let errorMessage = `请求失败：HTTP ${response.status}`;
+          try {
+            const errorJson = await response.json();
+            errorMessage = errorJson?.detail?.message || errorMessage;
+          } catch (_) {}
+          throw new Error(errorMessage);
+        }
+
+        const blob = await response.blob();
+
+        if (currentAudioUrl) {
+          URL.revokeObjectURL(currentAudioUrl);
+        }
+
+        currentAudioUrl = URL.createObjectURL(blob);
+
+        const ext = formatEl.value === "wav" ? "wav" : "mp3";
+        audioPlayer.src = currentAudioUrl;
+        downloadLink.href = currentAudioUrl;
+        downloadLink.download = `mimo-tts.${ext}`;
+
+        playerCard.classList.remove("hidden");
+        audioPlayer.play().catch(() => {});
+      } catch (err) {
+        showError(err.message || "生成失败，请稍后重试。");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    updateCounter();
+  </script>
+</body>
+</html>
