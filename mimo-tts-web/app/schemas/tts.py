@@ -7,9 +7,18 @@ class TTSRequest(BaseModel):
     # 可选：允许前端传入 Token。
     # 这样用户无需修改 .env；如果不传，则回退使用后端环境变量 MIMO_API_KEY。
     api_key: str | None = Field(default=None, max_length=4096)
+    auth_type: Literal["bearer", "api-key"] | None = Field(default=None)
 
     text: str = Field(..., min_length=1, max_length=4096)
+
+    # 预置音色时使用 MiMo 官方音色名，例如：茉莉、冰糖、苏打等。
+    # 音色复刻时，前端仍会传一个展示名，但真正的声音样本走 voice_audio_data_url。
     voice: str = Field(default="茉莉")
+
+    # 音色复刻：官方示例不是先创建一个永久 voice_id，而是把音频样本转成
+    # data:audio/...;base64,... 作为 audio.voice 直接传给 mimo-v2.5-tts-voiceclone。
+    voice_audio_data_url: str | None = Field(default=None, max_length=14_000_000)
+
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
     volume: int = Field(default=80, ge=0, le=100)
     response_format: Literal["mp3", "wav"] = "mp3"
@@ -34,3 +43,18 @@ class TTSRequest(BaseModel):
             return None
         value = value.strip()
         return value or None
+
+    @field_validator("voice_audio_data_url")
+    @classmethod
+    def validate_voice_audio_data_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        if not value.startswith("data:audio/") or ";base64," not in value:
+            raise ValueError("复刻音频必须是 data:audio/...;base64,... 格式")
+        # 官方 skill 说明：音色样本 Base64 编码不超过 10 MB，仅支持 mp3 和 wav。
+        if not (value.startswith("data:audio/mpeg;base64,") or value.startswith("data:audio/mp3;base64,") or value.startswith("data:audio/wav;base64,") or value.startswith("data:audio/x-wav;base64,")):
+            raise ValueError("复刻音频仅建议使用 mp3 或 wav。")
+        return value

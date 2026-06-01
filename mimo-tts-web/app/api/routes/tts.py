@@ -1,6 +1,9 @@
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, File, Form, UploadFile
 
 from app.controllers.tts_controller import synthesize_tts_controller
+from app.controllers.voice_controller import clone_voice_controller
 from app.schemas.tts import TTSRequest
 
 router = APIRouter(tags=["TTS"])
@@ -12,6 +15,7 @@ async def health_check():
         "ok": True,
         "service": "mimo-tts-web",
         "base_url": "https://api.xiaomimimo.com/v1",
+        "features": ["tts", "voice_clone"],
     }
 
 
@@ -20,6 +24,7 @@ async def list_voices():
     """
     前端下拉菜单使用。
     这里使用 MiMo 接口报错信息中返回的可用音色原名，value 必须完全匹配。
+    自定义复刻音色会由前端在创建成功后追加到下拉框。
     """
     return {
         "voices": [
@@ -39,3 +44,22 @@ async def list_voices():
 @router.post("/tts")
 async def synthesize_tts(req: TTSRequest):
     return await synthesize_tts_controller(req)
+
+
+@router.post("/voices/clone")
+async def clone_voice(
+    api_key: str | None = Form(default=None),
+    auth_type: Literal["bearer", "api-key"] | None = Form(default=None),
+    name: str = Form(..., min_length=1, max_length=80),
+    description: str | None = Form(default=None, max_length=300),
+    consent_accepted: bool = Form(False),
+    audio: UploadFile = File(...),
+):
+    return await clone_voice_controller(
+        api_key=api_key,
+        auth_type=auth_type,
+        name=name,
+        description=description,
+        consent_accepted=consent_accepted,
+        audio=audio,
+    )
