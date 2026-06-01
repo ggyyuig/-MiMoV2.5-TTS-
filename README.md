@@ -1,56 +1,30 @@
-# MiMo TTS Web
+# MiMo V2.5 TTS Studio
 
-一个基于 **Python FastAPI + HTML/CSS/JavaScript** 的小米 MiMo V2.5 TTS 网页应用。
+一个基于 **FastAPI + 原生 HTML/CSS/JavaScript** 的小米 MiMo V2.5 TTS 网页应用。
 
-项目支持在网页中输入文本，调用小米 MiMo 开放平台接口，将文字转换为语音音频。前端提供现代化玻璃拟态界面，后端作为 API 代理层，避免直接把请求逻辑写死在前端。
+项目支持：
 
-> 默认 API 地址：`https://api.xiaomimimo.com/v1`
+- 输入文本生成语音
+- 选择 MiMo 内置音色
+- 在网页中填写 API Token，不需要写死到代码里
+- 上传音频或直接录音，作为临时复刻音色使用
+- 生成后在线播放与下载音频
+- Windows、Docker、安卓 Termux 运行
 
----
-
-## 项目预览
-
-本项目主要功能：
-
-- 文本转语音 TTS
-- 支持网页端填写 MiMo API Key
-- 支持 Bearer Token / api-key 两种认证方式
-- 支持音色选择
-- 支持语速调节
-- 支持音量调节
-- 支持 MP3 / WAV 输出
-- 支持在线播放生成音频
-- 支持下载音频文件
-- FastAPI 后端代理请求，前端不需要直接写死接口逻辑
-- 支持 Windows 本地运行
-- 支持手机浏览器访问电脑后端
-- 支持安卓 Termux 本机运行
+> 注意：本项目是本地代理工具。请不要把真实 API Token 提交到 GitHub。
 
 ---
 
-## 技术栈
+## 界面说明
 
-### 前端
+新版界面分成 4 个清晰区域：
 
-- HTML5
-- CSS3
-- JavaScript ES6+
-- TailwindCSS CDN
-- Glassmorphism 玻璃拟态 UI
+1. **连接 MiMo API**：填写 Token，选择认证方式。
+2. **生成语音**：输入文本，选择音色、语速、音量、输出格式。
+3. **复刻声音 / 自定义音色**：上传音频或录音，保存为本地复刻音色。
+4. **播放与下载**：生成成功后播放或下载音频。
 
-### 后端
-
-- Python 3.10+
-- FastAPI
-- Uvicorn
-- HTTPX
-- Pydantic Settings
-
-### 部署
-
-- Docker
-- 本地 Python 环境
-- 安卓 Termux 可运行
+复刻音色不会再调用不存在的 `/voices/add` 接口。项目会在生成语音时直接使用 VoiceClone 模型，把音频样本作为 `audio.voice` 发送给 MiMo。
 
 ---
 
@@ -64,7 +38,8 @@ mimo-tts-web/
 │   │   └── routes/
 │   │       └── tts.py
 │   ├── controllers/
-│   │   └── tts_controller.py
+│   │   ├── tts_controller.py
+│   │   └── voice_controller.py
 │   ├── services/
 │   │   └── mimo_service.py
 │   ├── schemas/
@@ -74,142 +49,77 @@ mimo-tts-web/
 │   └── static/
 │       └── index.html
 ├── requirements.txt
-├── Dockerfile
 ├── .env.example
+├── Dockerfile
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 支持音色
+## 运行前准备
 
-根据 MiMo API 返回，目前可用音色包括：
+需要安装：
 
-```txt
-mimo_default
-冰糖
-茉莉
-苏打
-白桦
-Mia
-Chloe
-Milo
-Dean
-```
+- Python 3.10+
+- pip
+- 浏览器，例如 Edge、Chrome
 
-默认音色为：
-
-```txt
-茉莉
-```
-
-如果接口返回 `Unknown voice`，请检查前端下拉框的 `value` 是否和官方返回的音色名称完全一致。
+推荐 Python 3.11 或 3.12。
 
 ---
 
-## Windows 本地运行
+## Windows 第一次启动
 
-### 1. 解压项目
+打开 PowerShell，进入项目目录。
 
-例如解压到：
-
-```txt
-C:\Users\21642\Desktop\mimo-tts-web
-```
-
-### 2. 打开 PowerShell
-
-进入项目目录：
+如果项目解压在桌面：
 
 ```powershell
 cd "C:\Users\21642\Desktop\mimo-tts-web"
 ```
 
-如果你解压后出现双层目录，例如：
+如果你解压后是双层目录，比如：
 
 ```txt
 C:\Users\21642\Desktop\mimo-tts-web\mimo-tts-web
 ```
 
-那就进入里面那层：
+那就进入里面那一层：
 
 ```powershell
 cd "C:\Users\21642\Desktop\mimo-tts-web\mimo-tts-web"
 ```
 
-可以用下面命令检查是否进入正确目录：
-
-```powershell
-dir
-```
-
-当前目录里应该能看到：
-
-```txt
-app
-requirements.txt
-Dockerfile
-```
-
----
-
-### 3. 创建虚拟环境
+然后运行：
 
 ```powershell
 python -m venv .venv
-```
 
-如果 `python` 命令不可用，可以尝试：
-
-```powershell
-py -m venv .venv
-```
-
----
-
-### 4. 激活虚拟环境
-
-```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 .\.venv\Scripts\Activate.ps1
-```
 
----
-
-### 5. 安装依赖
-
-```powershell
 python -m pip install --upgrade pip
 
 pip install -r requirements.txt
-```
 
-如果安装慢，可以使用国内镜像：
-
-```powershell
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-```
-
----
-
-### 6. 启动服务
-
-```powershell
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-启动成功后，电脑浏览器打开：
+启动成功后，浏览器打开：
 
 ```txt
 http://127.0.0.1:8000
 ```
 
+不要直接双击 `app/static/index.html`。
+
 ---
 
-## 下次启动
+## Windows 第二次以后启动
 
-如果已经安装过依赖，下次只需要：
+以后不用重复安装依赖，只需要：
 
 ```powershell
 cd "C:\Users\21642\Desktop\mimo-tts-web"
@@ -229,29 +139,86 @@ http://127.0.0.1:8000
 
 ---
 
-## 手机访问电脑后端
+## 网页里怎么填 Token
 
-如果想在手机浏览器上使用，需要电脑和手机连接同一个 WiFi。
+打开网页后，在顶部 **连接 MiMo API** 区域填写你的 MiMo API Token。
 
-### 1. 电脑启动后端
+认证方式建议先选：
+
+```txt
+Bearer Token
+```
+
+如果返回 401，再切换成：
+
+```txt
+api-key 请求头
+```
+
+如果你勾选“记住到本机浏览器”，Token 会保存在当前浏览器的 `localStorage` 中。请不要在公共电脑上勾选。
+
+---
+
+## 内置音色
+
+当前内置音色使用 MiMo 接口实际返回过的可用名称：
+
+```txt
+mimo_default
+冰糖
+茉莉
+苏打
+白桦
+Mia
+Chloe
+Milo
+Dean
+```
+
+如果遇到：
+
+```txt
+Unknown voice
+```
+
+说明音色名称不被当前接口支持，请选择上面这些音色。
+
+---
+
+## 声音复刻使用方法
+
+网页中进入 **复刻声音 / 自定义音色** 区域：
+
+1. 填写音色名称，例如：`我的声音`。
+2. 上传一段音频，或点击“开始录音”。
+3. 建议样本 10–30 秒。
+4. 勾选授权确认。
+5. 点击“保存为复刻音色”。
+6. 保存成功后，该音色会自动加入“发音人”下拉框。
+7. 输入文本，点击“生成语音”。
+
+注意事项：
+
+- 只上传自己的声音，或已获得声音本人授权的音频。
+- 不要用于冒充、诈骗或误导他人。
+- 音频尽量清晰、安静、单人声。
+- 样本太大会导致 Base64 超过限制。
+- 上传 mp3 / wav 最稳。
+
+---
+
+## 手机访问电脑上的项目
+
+如果你想在手机上打开网页，但后端运行在电脑上：
+
+1. 电脑和手机连接同一个 WiFi。
+2. 电脑启动后端时必须使用：
 
 ```powershell
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-注意必须是：
-
-```txt
---host 0.0.0.0
-```
-
-不能只监听 `127.0.0.1`。
-
----
-
-### 2. 查询电脑 IP
-
-在 PowerShell 输入：
+3. 在电脑 PowerShell 查看局域网 IP：
 
 ```powershell
 ipconfig
@@ -263,17 +230,13 @@ ipconfig
 IPv4 地址 . . . . . . . . . . . . : 192.168.1.8
 ```
 
----
-
-### 3. 手机浏览器访问
-
-假设电脑 IP 是：
+4. 手机浏览器打开：
 
 ```txt
-192.168.1.8
+http://电脑IPv4地址:8000
 ```
 
-那么手机打开：
+例如：
 
 ```txt
 http://192.168.1.8:8000
@@ -287,62 +250,33 @@ http://127.0.0.1:8000
 
 因为手机上的 `127.0.0.1` 指的是手机自己，不是电脑。
 
+如果手机打不开，可能是 Windows 防火墙拦截。可以用管理员 PowerShell 执行：
+
+```powershell
+New-NetFirewallRule -DisplayName "MiMo TTS Web 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
+```
+
 ---
 
-## 安卓 Termux 本机运行
+## 安卓手机 Termux 运行
 
-如果想在安卓手机本机运行，可以使用：
+安卓可以使用 **Acode + Termux**。
 
-- Acode 编辑代码
-- Termux 运行 Python 后端
-- 手机浏览器打开网页
+Acode 负责编辑代码，Termux 负责运行 FastAPI 后端。
 
-### 1. 安装 Termux
-
-建议从 F-Droid 下载新版 Termux。
-
-### 2. 给 Termux 存储权限
+Termux 命令：
 
 ```bash
 termux-setup-storage
-```
 
-### 3. 安装 Python
-
-```bash
 pkg update
+
 pkg install python
-```
 
-### 4. 进入项目目录
-
-假设项目解压到了下载目录：
-
-```bash
 cd /storage/emulated/0/Download/mimo-tts-web
-```
 
-如果是双层目录：
-
-```bash
-cd /storage/emulated/0/Download/mimo-tts-web/mimo-tts-web
-```
-
-### 5. 安装依赖
-
-```bash
 pip install -r requirements.txt
-```
 
-如果安装慢：
-
-```bash
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
-```
-
-### 6. 启动后端
-
-```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -362,7 +296,7 @@ docker build -t mimo-tts-web .
 docker run --rm -p 8000:8000 mimo-tts-web
 ```
 
-然后打开：
+浏览器打开：
 
 ```txt
 http://127.0.0.1:8000
@@ -370,228 +304,175 @@ http://127.0.0.1:8000
 
 ---
 
-## API Key 使用说明
+## 可选：使用 .env 配置 Token
 
-本项目支持两种方式：
+默认情况下，你可以直接在网页里填写 Token。
 
-### 方式一：网页中填写 API Key
-
-打开网页后，在右侧 API Key 输入框中填写你的 MiMo API Key。
-
-可以选择：
-
-```txt
-Bearer Token
-api-key 请求头
-```
-
-如果使用 `Bearer Token` 报 401，可以切换到 `api-key 请求头` 再试。
-
----
-
-### 方式二：使用 .env 文件
-
-复制示例文件：
+如果你不想每次在网页填，也可以复制配置文件：
 
 ```bash
 cp .env.example .env
 ```
 
-Windows PowerShell 可以使用：
-
-```powershell
-copy .env.example .env
-```
-
-然后修改 `.env`：
+然后编辑 `.env`：
 
 ```env
-MIMO_API_KEY=your_mimo_api_key_here
+MIMO_API_KEY=your_mimo_token_here
 MIMO_BASE_URL=https://api.xiaomimimo.com/v1
 MIMO_ENDPOINT_PATH=/chat/completions
 MIMO_MODEL=mimo-v2.5-tts
+MIMO_VOICE_CLONE_MODEL=mimo-v2.5-tts-voiceclone
 MIMO_AUTH_TYPE=bearer
 ```
 
+前端传入 Token 时，会优先使用前端 Token。前端不填时，才使用 `.env` 里的 `MIMO_API_KEY`。
+
 ---
 
-## curl 测试后端接口
+## curl 测试后端
 
-Windows PowerShell：
-
-```powershell
-curl.exe -X POST "http://127.0.0.1:8000/api/tts" `
-  -H "Content-Type: application/json" `
-  -d '{"text":"你好，这是 MiMo 语音合成测试。","voice":"茉莉","speed":1.0,"volume":80,"response_format":"mp3"}' `
+```bash
+curl -X POST "http://127.0.0.1:8000/api/tts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "你的 MiMo Token",
+    "auth_type": "bearer",
+    "text": "你好，这是 MiMo V2.5 TTS 测试。",
+    "voice": "茉莉",
+    "speed": 1.0,
+    "volume": 80,
+    "response_format": "mp3"
+  }' \
   --output output.mp3
 ```
 
-如果前端 API Key 输入框没有传入密钥，则后端会尝试读取 `.env` 中的 `MIMO_API_KEY`。
+Windows CMD 可以使用：
+
+```cmd
+curl -X POST "http://127.0.0.1:8000/api/tts" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"api_key\":\"你的 MiMo Token\",\"auth_type\":\"bearer\",\"text\":\"你好，这是 MiMo V2.5 TTS 测试。\",\"voice\":\"茉莉\",\"speed\":1.0,\"volume\":80,\"response_format\":\"mp3\"}" ^
+  --output output.mp3
+```
 
 ---
 
 ## 常见问题
 
-### 1. Failed to fetch
+### 1. 为什么直接双击 index.html 不行？
 
-一般是前端没有连接到后端。
+因为项目需要 FastAPI 后端代理 MiMo API。
 
-检查：
-
-- 是否直接双击了 `index.html`
-- 是否启动了 FastAPI 后端
-- 访问地址是否是 `http://127.0.0.1:8000`
-- 手机上是否使用了电脑局域网 IP
-
-正确方式：
+正确打开地址是：
 
 ```txt
-先启动后端，再打开 http://127.0.0.1:8000
+http://127.0.0.1:8000
+```
+
+不是：
+
+```txt
+file:///C:/Users/.../index.html
 ```
 
 ---
 
-### 2. 无法识别 Activate.ps1
+### 2. `Failed to fetch` 怎么办？
 
-说明当前目录里没有 `.venv`，或者没有进入正确项目目录。
+通常是后端没有启动，或者你直接打开了 HTML 文件。
 
-先执行：
-
-```powershell
-dir
-```
-
-确认当前目录里有：
+先确认这个地址能打开：
 
 ```txt
-app
-requirements.txt
+http://127.0.0.1:8000/api/health
 ```
 
-然后创建虚拟环境：
+如果打不开，说明后端没启动成功。
+
+---
+
+### 3. `.\.venv\Scripts\Activate.ps1` 找不到怎么办？
+
+说明还没创建虚拟环境，先运行：
 
 ```powershell
 python -m venv .venv
 ```
 
-再激活：
+如果 `python` 不行，试：
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+py -m venv .venv
 ```
 
 ---
 
-### 3. Unknown voice
+### 4. `Unknown voice` 怎么办？
 
-如果出现：
-
-```txt
-Unknown voice
-```
-
-请使用支持的音色：
+选择项目内置支持的音色，例如：
 
 ```txt
-mimo_default
-冰糖
 茉莉
 苏打
-白桦
-Mia
-Chloe
-Milo
-Dean
+mimo_default
 ```
 
-不要使用：
+不要使用旧的：
 
 ```txt
 xiaomi-mimo-test
 moli
 bingtang
-soda
-baihua
 ```
 
 ---
 
-### 4. 401 鉴权失败
+### 5. 复刻音色时报 404 怎么办？
 
-可能原因：
-
-- API Key 填错
-- 认证方式选错
-- 当前 Token 没有模型权限
-
-可以在网页里切换：
+新版已经不再调用 `/voices/add`。如果还出现类似问题，请确认你启动的是新版项目，并且浏览器地址是：
 
 ```txt
-Bearer Token
-api-key 请求头
+http://127.0.0.1:8000
 ```
 
----
+不是直接打开旧的 `index.html`。
 
-### 5. 429 限速或额度不足
-
-说明请求太频繁，或者 Token Plan 额度不足。
-
-可以稍后重试，或者检查 MiMo 控制台额度。
+可以按 `Ctrl + F5` 强制刷新缓存。
 
 ---
 
-### 6. 手机访问不到电脑
+### 6. 401 鉴权失败怎么办？
 
-可能原因：
+检查：
 
-- 手机和电脑不在同一个 WiFi
-- 校园网开启了设备隔离
-- Windows 防火墙拦截了 8000 端口
-- 启动后端时没有使用 `--host 0.0.0.0`
-
-可以尝试管理员 PowerShell 放行端口：
-
-```powershell
-New-NetFirewallRule -DisplayName "MiMo TTS Web 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow
-```
+- Token 是否填错
+- 认证方式是否应该切换为 `api-key`
+- 账户是否有 MiMo V2.5 TTS 或 VoiceClone 权限
+- Token 是否过期或额度不足
 
 ---
 
-## 安全提醒
+## GitHub 发布注意事项
 
-请不要把自己的 API Key 提交到 GitHub。
-
-建议：
-
-- `.env` 加入 `.gitignore`
-- GitHub 仓库不要上传真实 Token
-- README 中只写 `.env.example`
-- 前端“记住 API Key”只适合个人本机使用，不建议在公共电脑使用
-
----
-
-## .gitignore 建议
+请确保 `.gitignore` 包含：
 
 ```gitignore
+.env
 .venv/
 __pycache__/
 *.pyc
-.env
-.DS_Store
 start-log.txt
-output.mp3
-output.wav
 ```
 
+不要上传：
+
+- 真实 API Token
+- `.env`
+- 个人声音样本
+- 生成的私人音频
+
 ---
 
-## License
+## 免责声明
 
-MIT License
-
----
-
-## 说明
-
-本项目仅用于学习和个人开发测试。MiMo API 的具体模型名称、接口路径、鉴权方式和可用音色可能会随官方更新而变化，请以小米 MiMo 开放平台实际文档和接口返回为准。
+本项目仅用于学习和个人合法用途。声音复刻功能请只用于本人声音或已获得授权的声音。禁止用于冒充他人、诈骗、误导公众、侵犯隐私或其他违法用途。
