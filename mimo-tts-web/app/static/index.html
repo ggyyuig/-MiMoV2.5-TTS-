@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiMo V2.5 TTS Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+          },
+          fontFamily: {
+            sans: ['-apple-system','BlinkMacSystemFont','SF Pro Display','Segoe UI','Microsoft YaHei','sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    :root { color-scheme: light; --radius: 14px; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{
+      min-height:100vh;
+      background:#f4f6fb;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI","Microsoft YaHei",sans-serif;
+      color:#1a1d26;
+      line-height:1.6;
+    }
+
+    /* === LAYOUT === */
+    .app-wrap{max-width:1120px;margin:0 auto;padding:24px 20px 60px}
+    @media(min-width:640px){.app-wrap{padding:32px 32px 80px}}
+
+    /* === SURFACE === */
+    .surface{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:var(--radius);
+      box-shadow:0 1px 3px rgba(0,0,0,.04),0 6px 24px rgba(0,0,0,.03);
+    }
+    .surface-inset{
+      background:#f9fafb;
+      border:1px solid #f0f1f4;
+      border-radius:12px;
+    }
+    .surface-elevated{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      box-shadow:0 2px 8px rgba(0,0,0,.06);
+    }
+
+    /* === FIELDS === */
+    .field{
+      width:100%;border-radius:10px;border:1.5px solid #e0e3e8;background:#fff;
+      padding:10px 14px;font-size:14px;outline:none;transition:all .2s;color:#1a1d26;
+    }
+    .field:focus{border-color:#818cf8;box-shadow:0 0 0 3px rgba(129,140,248,.12)}
+    .field::placeholder{color:#9ca3af}
+    textarea.field{resize:vertical;min-height:100px;line-height:1.7;font-size:15px}
+    select.field{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:36px}
+
+    /* === BUTTONS === */
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      border-radius:10px;font-weight:600;font-size:14px;padding:10px 20px;
+      border:none;cursor:pointer;transition:all .2s;white-space:nowrap;
+    }
+    .btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+    .btn-primary{
+      background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;
+      box-shadow:0 2px 8px rgba(79,70,229,.25),inset 0 1px 0 rgba(255,255,255,.15);
+    }
+    .btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,70,229,.35),inset 0 1px 0 rgba(255,255,255,.15)}
+    .btn-primary:active:not(:disabled){transform:translateY(0)}
+    .btn-outline{
+      background:#fff;color:#374151;border:1.5px solid #e0e3e8;font-weight:500;
+    }
+    .btn-outline:hover:not(:disabled){background:#f9fafb;border-color:#cbd5e1}
+    .btn-sm{padding:7px 14px;font-size:13px;border-radius:8px}
+
+    /* === TABS === */
+    .tabs{display:flex;gap:4px;background:#f3f4f6;border-radius:12px;padding:4px;width:fit-content}
+    .tab{
+      display:flex;align-items:center;gap:6px;
+      padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;
+      color:#6b7280;background:transparent;border:none;cursor:pointer;
+      transition:all .2s;position:relative;
+    }
+    .tab:hover{color:#374151;background:rgba(0,0,0,.03)}
+    .tab.on{color:#4f46e5;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+    /* === BADGES === */
+    .badge{
+      display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
+      border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1;
+    }
+    .badge-new{background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe}
+    .badge-tts{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0}
+    .badge-vd{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe}
+    .badge-amber{background:#fffbeb;color:#b45309;border:1px solid #fde68a}
+
+    /* === STEP DOT === */
+    .step{
+      width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:800;flex-shrink:0;color:#fff;
+    }
+
+    /* === TIP TAG === */
+    .tip{
+      display:inline-flex;align-items:center;padding:5px 12px;border-radius:999px;
+      font-size:12px;font-weight:600;background:#f3f4f6;color:#6b7280;
+      border:1px solid #e5e7eb;cursor:pointer;transition:all .15s;white-space:nowrap;
+    }
+    .tip:hover{background:#eef2ff;color:#4f46e5;border-color:#c7d2fe}
+    .tip.on{background:#4f46e5;color:#fff;border-color:#4f46e5}
+
+    /* === RANGE === */
+    input[type="range"]{-webkit-appearance:none;height:5px;border-radius:3px;background:#e5e7eb;outline:none}
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+      background:#4f46e5;cursor:pointer;border:3px solid #fff;
+      box-shadow:0 1px 4px rgba(79,70,229,.3);
+    }
+
+    /* === SPINNER === */
+    .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .65s linear infinite}
+    @keyframes sp{to{transform:rotate(360deg)}}
+
+    /* === COLLAPSE === */
+    .collapse{overflow:hidden;transition:opacity .25s ease}
+    .collapse.shut{display:none}
+    .collapse:not(.shut){margin-bottom:20px}
+
+    /* === ANIMATE === */
+    .panel{display:none}
+    .panel.on{display:block;animation:up .2s ease}
+    @keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+    /* === SCROLLBAR === */
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+
+    /* === FOOTER === */
+    .foot{text-align:center;padding:32px 0 0;font-size:12px;color:#9ca3af}
+    .foot a{color:#6b7280;text-decoration:none}.foot a:hover{color:#4f46e5}
+
+    /* === HEADER === */
+    .hdr{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
+    @media(min-width:640px){.hdr{flex-direction:row;align-items:flex-end;justify-content:space-between}}
+    .hdr-badge{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 14px;border-radius:999px;font-size:12px;font-weight:600;
+      background:#fff;border:1px solid #e5e7eb;color:#4f46e5;
+      box-shadow:0 1px 3px rgba(0,0,0,.04);width:fit-content;margin-bottom:8px;
+    }
+    .hdr h1{font-size:28px;font-weight:800;letter-spacing:-.03em;color:#111827;line-height:1.2}
+    @media(min-width:640px){.hdr h1{font-size:32px}}
+    .hdr p{font-size:14px;color:#6b728b;margin-top:6px;max-width:560px}
+
+    /* === INFO BANNER === */
+    .banner{
+      display:flex;align-items:flex-start;gap:14px;padding:20px;border-radius:var(--radius);
+      margin-bottom:20px;
+    }
+    .banner-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .banner h3{font-size:14px;font-weight:700;color:#111827}
+    .banner p{font-size:13px;color:#4b5563;margin-top:4px;line-height:1.6}
+    .banner .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .banner .tag{font-size:11px;font-weight:700}
+
+    /* === PLAYER === */
+    .player-wrap{border-top:1px solid #f3f4f6;padding-top:20px;margin-top:20px}
+    audio{border-radius:10px;height:40px;width:100%}
+  </style>
+</head>
+<body>
+<div class="app-wrap">
+
+  <!-- ===== HEADER ===== -->
+  <header class="hdr">
+    <div>
+      <div class="hdr-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        MiMo V2.5 TTS
+      </div>
+      <h1>MiMo 语音工作台</h1>
+      <p>输入文字即可合成语音。支持预置音色、文本描述生成音色、音频样本复刻音色三种模式。</p>
+    </div>
+    <button id="apiToggle" type="button" class="btn btn-outline btn-sm" style="align-self:flex-start">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      API 设置
+      <svg id="apiArrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </header>
+
+  <!-- ===== API SETTINGS ===== -->
+  <div id="apiPanel" class="surface" style="display:none;margin-bottom:20px">
+    <div style="padding:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <span style="font-size:13px;font-weight:700;color:#374151">API 配置</span>
+        <span style="font-size:11px;color:#9ca3af;margin-left:4px">修改后即时生效，无需重启</span>
+      </div>
+      <div style="display:grid;gap:14px;grid-template-columns:1fr 1fr">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">API Token</label>
+          <div style="position:relative">
+            <input id="apiKey" type="password" autocomplete="off" class="field" placeholder="sk-..." style="padding-right:52px" />
+            <button id="toggleKey" type="button" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:#f3f4f6;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;color:#6b7280;cursor:pointer">显示</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#9ca3af;cursor:pointer">
+            <input id="rememberKey" type="checkbox" style="border-radius:4px" /> 记住到浏览器
+          </label>
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">认证方式</label>
+          <select id="authType" class="field">
+            <option value="bearer" selected>Bearer Token</option>
+            <option value="api-key">api-key 请求头</option>
+          </select>
+        </div>
+        <div style="grid-column:span 2">
+          <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">API 接口地址</label>
+          <input id="baseUrl" type="text" class="field" placeholder="https://api.xiaomimimo.com/v1" value="https://api.xiaomimimo.com/v1" />
+          <p style="font-size:11px;color:#9ca3af;margin-top:5px">留空则使用后端 .env 默认值。支持自定义接口地址。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TABS ===== -->
+  <nav class="tabs" style="margin-bottom:20px">
+    <button class="tab on" data-tab="tts">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      语音合成
+    </button>
+    <button class="tab" data-tab="design">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      音色设计
+      <span class="badge badge-new">NEW</span>
+    </button>
+    <button class="tab" data-tab="clone">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      声音复刻
+    </button>
+  </nav>
+
+  <!-- ========== TAB 1: 语音合成 ========== -->
+  <div id="panel-tts" class="panel on">
+    <div class="surface" style="padding:24px">
+      <div style="display:grid;gap:20px;grid-template-columns:1fr" class="lg:!grid-cols-[1.3fr_.7fr]">
+
+        <!-- Text -->
+        <div class="surface-inset" style="padding:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <label style="font-size:13px;font-weight:700;color:#374151">合成文本</label>
+            <span id="ttsCount" style="font-size:11px;font-weight:600;color:#9ca3af;background:#f3f4f6;padding:3px 10px;border-radius:999px">0 / 4096</span>
+          </div>
+          <textarea id="ttsText" maxlength="4096" class="field" style="min-height:260px" placeholder="请输入要转换成语音的文字&#10;&#10;例如：你好，欢迎使用 MiMo 语音工作台。这是一个由小米开发的高质量语音合成引擎。"></textarea>
+          <div style="margin-top:12px">
+            <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">风格提示（可选）</label>
+            <input id="ttsStyle" type="text" maxlength="300" class="field" placeholder="温柔、开心、新闻播报感、河南话、慢一点..." />
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="surface-elevated" style="padding:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <span style="font-size:13px;font-weight:700;color:#374151">参数</span>
+            <span class="badge badge-tts">TTS</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">发音人</label>
+              <select id="ttsVoice" class="field">
+                <option value="冰糖">冰糖 · 中文女声</option>
+                <option value="茉莉" selected>茉莉 · 中文女声</option>
+                <option value="苏打">苏打 · 中文男声</option>
+                <option value="白桦">白桦 · 中文男声</option>
+                <option value="Mia">Mia · English Female</option>
+                <option value="Chloe">Chloe · English Female</option>
+                <option value="Milo">Milo · English Male</option>
+                <option value="Dean">Dean · English Male</option>
+              </select>
+              <div id="customVoiceBar" style="display:none;margin-top:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;align-items:center;justify-content:space-between">
+                <span id="customVoiceLabel" style="font-size:12px;color:#b91c1c;font-weight:600"></span>
+                <button id="deleteVoice" type="button" style="background:none;border:none;color:#dc2626;font-size:12px;font-weight:700;cursor:pointer;padding:2px 6px;border-radius:4px;display:flex;align-items:center;gap:4px" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='none'">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  删除
+                </button>
+              </div>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:12px;font-weight:600;color:#6b7280">语速</label>
+                <span id="ttsSpd" style="font-size:12px;font-weight:700;color:#4f46e5">1.0x</span>
+              </div>
+              <input id="ttsSpeed" type="range" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%" />
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:12px;font-weight:600;color:#6b7280">音量</label>
+                <span id="ttsVol" style="font-size:12px;font-weight:700;color:#4f46e5">80</span>
+              </div>
+              <input id="ttsVolume" type="range" min="0" max="100" step="1" value="80" style="width:100%" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">输出格式</label>
+              <select id="ttsFmt" class="field"><option value="wav" selected>WAV</option><option value="mp3">MP3</option></select>
+            </div>
+            <button id="ttsGo" class="btn btn-primary" style="width:100%;padding:12px">
+              <span id="ttsGoTxt">生成语音</span>
+              <span id="ttsSpin" class="spin" style="display:none"></span>
+            </button>
+            <div id="ttsErr" style="display:none;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;padding:10px 14px;font-size:13px;color:#dc2626;line-height:1.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 2: 音色设计 ========== -->
+  <div id="panel-design" class="panel">
+    <div class="surface" style="padding:24px">
+
+      <!-- Banner -->
+      <div class="banner" style="background:linear-gradient(135deg,#eef2ff,#f5f3ff);border:1px solid #e0e7ff">
+        <div class="banner-icon" style="background:#4f46e5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </div>
+        <div>
+          <h3>什么是音色设计？</h3>
+          <p>用自然语言描述你想要的声音 — 年龄、性别、口音、情绪、音质 — AI 会根据描述自动生成匹配的音色并合成语音。<strong style="color:#111827">无需预置音色，无需上传音频。</strong></p>
+          <div class="tags">
+            <span class="tag" style="color:#4f46e5">不支持唱歌</span>
+            <span style="color:#d1d5db">·</span>
+            <span class="tag" style="color:#4f46e5">不支持预置音色</span>
+            <span style="color:#d1d5db">·</span>
+            <span class="tag" style="color:#4f46e5">不支持音色复刻</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;gap:20px;grid-template-columns:1fr" class="lg:!grid-cols-[1.3fr_.7fr]">
+        <!-- Left -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- Voice Desc -->
+          <div class="surface-inset" style="padding:20px;border:2px solid #e0e7ff">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="width:28px;height:28px;border-radius:7px;background:#e0e7ff;display:flex;align-items:center;justify-content:center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </div>
+              <label style="font-size:14px;font-weight:700;color:#111827">音色描述</label>
+              <span class="badge badge-new" style="font-size:10px;padding:2px 8px">核心</span>
+            </div>
+            <textarea id="vdDesc" maxlength="500" class="field" style="min-height:120px;border-color:#c7d2fe" placeholder="用文字描述你想要的声音...&#10;&#10;例如：一位20多岁的年轻女性，声音温柔甜美，带着淡淡的微笑感，普通话标准清晰。"></textarea>
+            <div style="margin-top:12px">
+              <div style="font-size:11px;font-weight:700;color:#9ca3af;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">快速选择</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px" id="vdTags">
+                <button type="button" class="tip" data-d="温柔甜美的年轻女声">温柔甜美女声</button>
+                <button type="button" class="tip" data-d="低沉浑厚的成熟男声">低沉浑厚男声</button>
+                <button type="button" class="tip" data-d="活泼开朗的少女声音">活泼少女</button>
+                <button type="button" class="tip" data-d="沉稳专业的新闻播报男声">新闻播报</button>
+                <button type="button" class="tip" data-d="温柔耐心的儿童故事讲述者">讲故事</button>
+                <button type="button" class="tip" data-d="充满活力的英文女声，发音清晰标准">英文女声</button>
+                <button type="button" class="tip" data-d="磁性温暖的男声，适合有声读物">有声读物</button>
+                <button type="button" class="tip" data-d="严肃权威的纪录片旁白">纪录片旁白</button>
+              </div>
+            </div>
+          </div>
+          <!-- Text -->
+          <div class="surface-inset" style="padding:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <label style="font-size:13px;font-weight:700;color:#374151">合成文本</label>
+              <span id="vdCount" style="font-size:11px;font-weight:600;color:#9ca3af;background:#fff;padding:3px 10px;border-radius:999px">0 / 4096</span>
+            </div>
+            <textarea id="vdText" maxlength="4096" class="field" style="min-height:180px" placeholder="输入要用这个音色合成的文字&#10;&#10;例如：今天天气真好，阳光洒在身上暖暖的。"></textarea>
+            <div style="margin-top:12px">
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">风格提示（可选）</label>
+              <input id="vdStyle" type="text" maxlength="300" class="field" placeholder="开心、温柔、严肃、轻快..." />
+            </div>
+          </div>
+        </div>
+        <!-- Right -->
+        <div class="surface-elevated" style="padding:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+            <span style="font-size:13px;font-weight:700;color:#374151">参数</span>
+            <span class="badge badge-vd">Voice Design</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:12px;font-weight:600;color:#6b7280">语速</label>
+                <span id="vdSpd" style="font-size:12px;font-weight:700;color:#4f46e5">1.0x</span>
+              </div>
+              <input id="vdSpeed" type="range" min="0.5" max="2.0" step="0.1" value="1.0" style="width:100%" />
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                <label style="font-size:12px;font-weight:600;color:#6b7280">音量</label>
+                <span id="vdVol" style="font-size:12px;font-weight:700;color:#4f46e5">80</span>
+              </div>
+              <input id="vdVolume" type="range" min="0" max="100" step="1" value="80" style="width:100%" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px">输出格式</label>
+              <select id="vdFmt" class="field"><option value="wav" selected>WAV</option><option value="mp3">MP3</option></select>
+            </div>
+            <div style="background:#f9fafb;border:1px solid #f0f1f4;border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px">描述技巧</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#6b7280;line-height:1.5">
+                <div style="display:flex;align-items:flex-start;gap:6px"><span style="margin-top:5px;width:4px;height:4px;border-radius:50%;background:#818cf8;flex-shrink:0"></span>年龄、性别、口音特征</div>
+                <div style="display:flex;align-items:flex-start;gap:6px"><span style="margin-top:5px;width:4px;height:4px;border-radius:50%;background:#818cf8;flex-shrink:0"></span>情绪：温柔、严肃、活泼、平静</div>
+                <div style="display:flex;align-items:flex-start;gap:6px"><span style="margin-top:5px;width:4px;height:4px;border-radius:50%;background:#818cf8;flex-shrink:0"></span>音质：沙哑、清亮、浑厚、甜美</div>
+                <div style="display:flex;align-items:flex-start;gap:6px"><span style="margin-top:5px;width:4px;height:4px;border-radius:50%;background:#818cf8;flex-shrink:0"></span>场景：新闻播报、讲故事、客服</div>
+              </div>
+            </div>
+            <button id="vdGo" class="btn btn-primary" style="width:100%;padding:12px">
+              <span id="vdGoTxt">生成语音</span>
+              <span id="vdSpin" class="spin" style="display:none"></span>
+            </button>
+            <div id="vdErr" style="display:none;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;padding:10px 14px;font-size:13px;color:#dc2626;line-height:1.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 3: 声音复刻 ========== -->
+  <div id="panel-clone" class="panel">
+    <div class="surface" style="padding:24px">
+
+      <!-- Banner -->
+      <div class="banner" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fde68a">
+        <div class="banner-icon" style="background:#d97706">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        </div>
+        <div>
+          <h3>什么是声音复刻？</h3>
+          <p>上传或录制一段已授权的声音样本，保存后即可在「语音合成」中使用该复刻音色。<strong style="color:#111827">基于音频样本精准复刻音色，实现任意声音的语音合成。</strong></p>
+          <div class="tags">
+            <span class="tag" style="color:#b45309">不支持唱歌</span>
+            <span style="color:#d1d5db">·</span>
+            <span class="tag" style="color:#b45309">不支持预置音色</span>
+            <span style="color:#d1d5db">·</span>
+            <span class="tag" style="color:#b45309">不支持音色设计</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 Steps -->
+      <div style="display:grid;gap:16px;grid-template-columns:1fr" class="lg:!grid-cols-3">
+
+        <!-- A -->
+        <div class="surface-inset" style="padding:20px">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+            <span class="step" style="background:#d97706">A</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#111827">命名音色</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px">保存后出现在「语音合成」列表中</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <input id="cloneName" type="text" maxlength="80" class="field" placeholder="音色名称，例如：我的声音" />
+            <input id="cloneDesc" type="text" maxlength="300" class="field" placeholder="描述（可选），例如：自然女声" />
+          </div>
+        </div>
+
+        <!-- B -->
+        <div class="surface-inset" style="padding:20px">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+            <span class="step" style="background:#d97706">B</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#111827">上传或录音</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px">建议 10–30 秒，环境安静</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em">上传 mp3 / wav / m4a</label>
+            <input id="cloneFile" type="file" accept="audio/*" style="font-size:12px" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button id="recStart" type="button" class="btn btn-outline btn-sm">开始录音</button>
+              <button id="recStop" type="button" class="btn btn-outline btn-sm" disabled style="opacity:.5">停止录音</button>
+            </div>
+            <audio id="clonePreview" style="display:none" controls></audio>
+          </div>
+        </div>
+
+        <!-- C -->
+        <div class="surface-inset" style="padding:20px">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+            <span class="step" style="background:#d97706">C</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#111827">授权并保存</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px">保存为浏览器本地样本</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;align-items:flex-start;gap:8px;background:#fff;border:1px solid #f0f1f4;border-radius:10px;padding:12px;font-size:12px;color:#4b5563;line-height:1.5;cursor:pointer">
+              <input id="cloneConsent" type="checkbox" style="margin-top:2px;border-radius:4px" />
+              我确认上传的是我自己的声音，或已获得授权，不用于冒充或误导他人。
+            </label>
+            <button id="cloneSave" class="btn btn-primary" style="width:100%;padding:11px;font-size:13px">
+              <span id="cloneSaveTxt">保存为复刻音色</span>
+              <span id="cloneSpin" class="spin" style="display:none"></span>
+            </button>
+            <div id="cloneStatus" style="display:none;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5"></div>
+            <p style="font-size:11px;color:#9ca3af;line-height:1.5">样本过长会导致 Base64 超限。录音自动转 WAV。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== RESULT PLAYER ========== -->
+  <div id="player" class="surface" style="padding:24px;margin-top:20px;display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:8px;background:#ecfdf5;display:flex;align-items:center;justify-content:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div>
+          <div id="pTitle" style="font-size:14px;font-weight:700;color:#111827">生成结果</div>
+          <div id="pMeta" style="font-size:12px;color:#6b7280"></div>
+        </div>
+      </div>
+      <a id="pDl" class="btn btn-outline btn-sm" download="mimo-tts.mp3" href="#">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        下载
+      </a>
+    </div>
+    <audio id="pAudio" controls style="width:100%"></audio>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="foot">
+    <p>MiMo V2.5 TTS Studio · Powered by <a href="https://github.com/XiaoMi/MiMo" target="_blank">Xiaomi MiMo</a></p>
+  </div>
+
+</div>
+
+<script>
+/* ===== STATE ===== */
+let audioUrl=null,sampleUrl=null,recorder=null,recChunks=[],recStream=null,recFile=null,customVoices=new Map();
+const CK="mimo_tts_api_key",CA="mimo_tts_auth_type",CB="mimo_tts_base_url",CV="mimo_tts_custom_voices_v2";
+const MAX_RAW=8*1024*1024,MAX_DU=10*1024*1024;
+
+/* ===== DOM ===== */
+const $=id=>document.getElementById(id);
+const apiKey=$("apiKey"),authType=$("authType"),baseUrl=$("baseUrl"),rememberKey=$("rememberKey");
+const apiToggle=$("apiToggle"),apiPanel=$("apiPanel"),apiArrow=$("apiArrow");
+const ttsText=$("ttsText"),ttsCount=$("ttsCount"),ttsStyle=$("ttsStyle"),ttsVoice=$("ttsVoice");
+const ttsSpeed=$("ttsSpeed"),ttsSpd=$("ttsSpd"),ttsVolume=$("ttsVolume"),ttsVol=$("ttsVol");
+const ttsFmt=$("ttsFmt"),ttsGo=$("ttsGo"),ttsGoTxt=$("ttsGoTxt"),ttsSpin=$("ttsSpin"),ttsErr=$("ttsErr");
+const vdDesc=$("vdDesc"),vdText=$("vdText"),vdCount=$("vdCount"),vdStyle=$("vdStyle");
+const vdSpeed=$("vdSpeed"),vdSpd=$("vdSpd"),vdVolume=$("vdVolume"),vdVol=$("vdVol");
+const vdFmt=$("vdFmt"),vdGo=$("vdGo"),vdGoTxt=$("vdGoTxt"),vdSpin=$("vdSpin"),vdErr=$("vdErr");
+const cloneName=$("cloneName"),cloneDesc=$("cloneDesc"),cloneFile=$("cloneFile");
+const recStart=$("recStart"),recStop=$("recStop"),clonePreview=$("clonePreview");
+const cloneConsent=$("cloneConsent"),cloneSave=$("cloneSave"),cloneSaveTxt=$("cloneSaveTxt");
+const cloneSpin=$("cloneSpin"),cloneStatus=$("cloneStatus");
+const customVoiceBar=$("customVoiceBar"),customVoiceLabel=$("customVoiceLabel"),deleteVoiceBtn=$("deleteVoice");
+const player=$("player"),pAudio=$("pAudio"),pDl=$("pDl"),pTitle=$("pTitle"),pMeta=$("pMeta");
+
+/* ===== INIT ===== */
+const sKey=localStorage.getItem(CK);if(sKey){apiKey.value=sKey;rememberKey.checked=true}
+const sAuth=localStorage.getItem(CA);if(sAuth==="api-key"||sAuth==="bearer")authType.value=sAuth;
+const sBase=localStorage.getItem(CB);if(sBase)baseUrl.value=sBase;
+
+/* ===== CUSTOM VOICES ===== */
+function loadVoices(){try{const l=JSON.parse(localStorage.getItem(CV)||"[]");for(const i of l){if(i&&i.id&&i.label&&i.data_url){customVoices.set(i.id,i);addOpt(i.label,i.id,false)}}}catch(e){}}
+function saveVoice(i){customVoices.set(i.id,i);try{localStorage.setItem(CV,JSON.stringify([...customVoices.values()].slice(-5)))}catch(e){showCS("存储空间不足，刷新后可能丢失","warn")}}
+function addOpt(label,val,sel=true){if(![...ttsVoice.options].some(o=>o.value===val)){const o=new Option(label,val,sel,sel);o.dataset.custom="1";ttsVoice.add(o)}if(sel)ttsVoice.value=val}
+function getClone(){return customVoices.get(ttsVoice.value)||null}
+function updateCustomBar(){const cv=getClone();if(cv){customVoiceBar.style.display="flex";customVoiceLabel.textContent=cv.label}else{customVoiceBar.style.display="none"}}
+function deleteCustomVoice(id){const cv=customVoices.get(id);customVoices.delete(id);const opt=[...ttsVoice.options].find(o=>o.value===id);if(opt)ttsVoice.remove(opt);try{localStorage.setItem(CV,JSON.stringify([...customVoices.values()].slice(-5)))}catch(e){}ttsVoice.value="茉莉";ttsVoice.dispatchEvent(new Event("change"))}
+function refreshCustomBar(){const opts=[...ttsVoice.options].filter(o=>o.dataset.custom==="1");for(const o of opts){if(!customVoices.has(o.value))ttsVoice.remove(o)}updateCustomBar()}
+loadVoices();
+refreshCustomBar();
+ttsVoice.addEventListener("change",updateCustomBar);
+deleteVoiceBtn.addEventListener("click",()=>{const cv=getClone();if(!cv)return;if(confirm("确定删除复刻音色「"+cv.label+"」？")){deleteCustomVoice(cv.id)}});
+updateCustomBar();
+
+/* ===== API PANEL ===== */
+apiToggle.addEventListener("click",()=>{const vis=apiPanel.style.display!=="none";apiPanel.style.display=vis?"none":"block";apiArrow.style.transform=vis?"rotate(0)":"rotate(180deg)"});
+$("toggleKey").addEventListener("click",()=>{const isP=apiKey.type==="password";apiKey.type=isP?"text":"password";$("toggleKey").textContent=isP?"隐藏":"显示"});
+rememberKey.addEventListener("change",()=>{if(rememberKey.checked&&apiKey.value.trim())localStorage.setItem(CK,apiKey.value.trim());else localStorage.removeItem(CK)});
+apiKey.addEventListener("input",()=>{if(rememberKey.checked){const v=apiKey.value.trim();if(v)localStorage.setItem(CK,v);else localStorage.removeItem(CK)}});
+authType.addEventListener("change",()=>localStorage.setItem(CA,authType.value));
+baseUrl.addEventListener("input",()=>{const v=baseUrl.value.trim();if(v)localStorage.setItem(CB,v);else localStorage.removeItem(CB)});
+
+/* ===== TABS ===== */
+document.querySelectorAll(".tab").forEach(t=>{t.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(b=>b.classList.remove("on"));document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));t.classList.add("on");$("panel-"+t.dataset.tab).classList.add("on")})});
+
+/* ===== HELPERS ===== */
+function err(el,msg){el.textContent=msg;el.style.display="block"}
+function noErr(el){el.textContent="";el.style.display="none"}
+function loadTTS(on){ttsGo.disabled=on;ttsSpin.style.display=on?"inline-block":"none";ttsGoTxt.textContent=on?"生成中...":"生成语音"}
+function loadVD(on){vdGo.disabled=on;vdSpin.style.display=on?"inline-block":"none";vdGoTxt.textContent=on?"生成中...":"生成语音"}
+function loadClone(on){cloneSave.disabled=on;cloneSpin.style.display=on?"inline-block":"none";cloneSaveTxt.textContent=on?"处理中...":"保存为复刻音色"}
+function showCS(msg,type){cloneStatus.textContent=msg;cloneStatus.style.display="block";cloneStatus.style.border="1px solid "+(type==="err"?"#fecaca":type==="ok"?"#a7f3d0":"#e5e7eb");cloneStatus.style.background=type==="err"?"#fef2f2":type==="ok"?"#ecfdf5":"#f9fafb";cloneStatus.style.color=type==="err"?"#dc2626":type==="ok"?"#059669":"#374151"}
+function showPlayer(type,blob,ext){if(audioUrl)URL.revokeObjectURL(audioUrl);audioUrl=URL.createObjectURL(blob);pAudio.src=audioUrl;pDl.href=audioUrl;pDl.download="mimo-"+type+"."+ext;if(type==="tts"){pTitle.textContent="语音合成结果";pMeta.textContent="使用预置音色合成"}else if(type==="design"){pTitle.textContent="音色设计结果";pMeta.textContent="通过文本描述自动生成音色"}else{pTitle.textContent="复刻音色结果";pMeta.textContent="通过音频样本复刻音色"}player.style.display="block";player.scrollIntoView({behavior:"smooth",block:"start"});pAudio.play().catch(()=>{})}
+function base(){const b=baseUrl.value.trim();return{api_key:apiKey.value.trim()||null,auth_type:authType.value,base_url:b||null}}
+function setPreview(f){if(!f)return;if(sampleUrl)URL.revokeObjectURL(sampleUrl);sampleUrl=URL.createObjectURL(f);clonePreview.src=sampleUrl;clonePreview.style.display="block"}
+function readDU(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result));r.onerror=()=>no(new Error("读取失败"));r.readAsDataURL(f)})}
+function writeStr(v,o,s){for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+function wavBlob(ab){const sr=ab.sampleRate,len=ab.length,ch=ab.numberOfChannels,buf=new ArrayBuffer(44+len*2),v=new DataView(buf);writeStr(v,0,"RIFF");v.setUint32(4,36+len*2,true);writeStr(v,8,"WAVE");writeStr(v,12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);writeStr(v,36,"data");v.setUint32(40,len*2,true);let o=44;const cd=[];for(let c=0;c<ch;c++)cd.push(ab.getChannelData(c));for(let i=0;i<len;i++){let s=0;for(let c=0;c<ch;c++)s+=cd[c][i];s=Math.max(-1,Math.min(1,s/ch));v.setInt16(o,s<0?s*0x8000:s*0x7fff,true);o+=2}return new Blob([v],{type:"audio/wav"})}
+async function toDU(f){if(f.size>MAX_RAW)throw new Error("音频太大，请换 10–30 秒的音频。");const nm=(f.name||"").toLowerCase(),tp=(f.type||"").toLowerCase();const isMp3=tp.includes("mpeg")||tp.includes("mp3")||nm.endsWith(".mp3"),isWav=tp.includes("wav")||nm.endsWith(".wav");if(isMp3||isWav){let du=await readDU(f);if(isMp3&&du.startsWith("data:audio/mp3"))du=du.replace("data:audio/mp3","data:audio/mpeg");if(du.length>MAX_DU)throw new Error("Base64 超 10MB，请换更短音频。");return du}const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw new Error("浏览器不支持，请上传 mp3/wav。");try{const ab=await f.arrayBuffer(),ctx=new AC(),dec=await ctx.decodeAudioData(ab.slice(0)),wb=wavBlob(dec);if(ctx.close)ctx.close();const wf=new File([wb],"v.wav",{type:"audio/wav"}),du=await readDU(wf);if(du.length>MAX_DU)throw new Error("转换后超 10MB，请录短一点。");return du}catch(e){throw new Error("无法转换格式，请上传 mp3/wav。")}}
+
+/* ===== TTS EVENTS ===== */
+ttsText.addEventListener("input",()=>{ttsCount.textContent=ttsText.value.length+" / 4096"});
+ttsSpeed.addEventListener("input",()=>{ttsSpd.textContent=Number(ttsSpeed.value).toFixed(1)+"x"});
+ttsVolume.addEventListener("input",()=>{ttsVol.textContent=ttsVolume.value});
+ttsGo.addEventListener("click",async()=>{
+  noErr(ttsErr);const text=ttsText.value.trim();if(!text){err(ttsErr,"请输入要合成的文本。");return}
+  const ck=getClone(),fmt=ck?"wav":ttsFmt.value;
+  const p={...base(),text,voice:ck?ck.name:ttsVoice.value,voice_audio_data_url:ck?ck.data_url:null,speed:Number(ttsSpeed.value),volume:Number(ttsVolume.value),response_format:fmt,style_prompt:ttsStyle.value.trim()||null};
+  loadTTS(true);try{const r=await fetch("/api/tts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});if(!r.ok){let m="请求失败: HTTP "+r.status;try{const e=await r.json();m=e?.detail?.message||m}catch(e){}throw new Error(m)}const b=await r.blob();showPlayer(ck?"clone":"tts",b,fmt==="wav"?"wav":"mp3")}catch(e){err(ttsErr,e.message||"生成失败，请稍后重试。")}finally{loadTTS(false)}
+});
+
+/* ===== VD EVENTS ===== */
+vdText.addEventListener("input",()=>{vdCount.textContent=vdText.value.length+" / 4096"});
+vdSpeed.addEventListener("input",()=>{vdSpd.textContent=Number(vdSpeed.value).toFixed(1)+"x"});
+vdVolume.addEventListener("input",()=>{vdVol.textContent=vdVolume.value});
+document.querySelectorAll("#vdTags .tip").forEach(t=>{t.addEventListener("click",()=>{const was=t.classList.contains("on");document.querySelectorAll("#vdTags .tip").forEach(x=>x.classList.remove("on"));if(!was){t.classList.add("on");vdDesc.value=t.dataset.d;vdDesc.dispatchEvent(new Event("input"))}})});
+vdDesc.addEventListener("input",()=>{document.querySelectorAll("#vdTags .tip").forEach(t=>{if(t.dataset.d!==vdDesc.value)t.classList.remove("on")})});
+vdGo.addEventListener("click",async()=>{
+  noErr(vdErr);const text=vdText.value.trim(),desc=vdDesc.value.trim();
+  if(!desc){err(vdErr,"请输入音色描述，例如：温柔甜美的年轻女声。");return}
+  if(!text){err(vdErr,"请输入要合成的文本。");return}
+  const p={...base(),text,voice_description:desc,speed:Number(vdSpeed.value),volume:Number(vdVolume.value),response_format:vdFmt.value,style_prompt:vdStyle.value.trim()||null};
+  loadVD(true);try{const r=await fetch("/api/voice-design",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});if(!r.ok){let m="请求失败: HTTP "+r.status;try{const e=await r.json();m=e?.detail?.message||m}catch(e){}throw new Error(m)}const b=await r.blob();showPlayer("design",b,vdFmt.value==="wav"?"wav":"mp3")}catch(e){err(vdErr,e.message||"生成失败，请稍后重试。")}finally{loadVD(false)}
+});
+
+/* ===== CLONE EVENTS ===== */
+cloneFile.addEventListener("change",()=>{const f=cloneFile.files?.[0];if(f){recFile=null;setPreview(f);showCS("已选择: "+f.name,"info")}});
+recStart.addEventListener("click",async()=>{try{if(!navigator.mediaDevices?.getUserMedia){showCS("浏览器不支持录音，请上传音频。","err");return}recStream=await navigator.mediaDevices.getUserMedia({audio:true});recChunks=[];const cs=["audio/webm;codecs=opus","audio/webm","audio/mp4"];const mt=cs.find(t=>window.MediaRecorder?.isTypeSupported(t))||"";recorder=new MediaRecorder(recStream,mt?{mimeType:mt}:undefined);recorder.ondataavailable=e=>{if(e.data?.size>0)recChunks.push(e.data)};recorder.onstop=()=>{const bt=recorder.mimeType||"audio/webm",bl=new Blob(recChunks,{type:bt}),ext=bt.includes("mp4")?"m4a":"webm";recFile=new File([bl],`rec-${Date.now()}.${ext}`,{type:bt});cloneFile.value="";setPreview(recFile);showCS("录音完成，点击保存。","ok");if(recStream){recStream.getTracks().forEach(t=>t.stop());recStream=null}};recorder.start();recStart.disabled=true;recStop.disabled=false;recStop.style.opacity="1";recStart.style.opacity=".5";showCS("正在录音，建议 10–30 秒...","info")}catch(e){showCS("无法启动录音，请上传音频。","err")}});
+recStop.addEventListener("click",()=>{if(recorder?.state!=="inactive")recorder.stop();recStart.disabled=false;recStop.disabled=true;recStop.style.opacity=".5";recStart.style.opacity="1"});
+cloneSave.addEventListener("click",async()=>{
+  const nm=cloneName.value.trim(),desc=cloneDesc.value.trim(),f=cloneFile.files?.[0]||recFile;
+  if(!nm){showCS("请给音色起个名字。","err");return}
+  if(!f){showCS("请先上传或录制音频。","err");return}
+  if(!cloneConsent.checked){showCS("请先勾选授权确认。","err");return}
+  loadClone(true);showCS("正在处理音频...","info");
+  try{const du=await toDU(f),id="clone_"+Date.now(),label=nm+" · 复刻音色";
+  saveVoice({id,label,name:nm,description:desc,data_url:du,created_at:Date.now()});
+  addOpt(label,id,true);showCS("已保存: "+label+"，即将跳转到语音合成。","ok");
+  setTimeout(()=>{document.querySelectorAll(".tab").forEach(b=>b.classList.remove("on"));document.querySelectorAll(".panel").forEach(p=>p.classList.remove("on"));document.querySelector('[data-tab="tts"]').classList.add("on");$("panel-tts").classList.add("on")},1200)}catch(e){showCS(e.message||"保存失败。","err")}finally{loadClone(false)}
+});
+</script>
+</body>
+</html>
